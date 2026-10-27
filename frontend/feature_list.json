@@ -1,0 +1,242 @@
+{
+  "proyecto": "orders-api / frontend",
+  "estado": "en desarrollo (primera versión)",
+  "nota": "Nico (2026-10-27): empezar el desarrollo e iterar las decisiones pendientes cuando se vuelvan bloqueantes.",
+  "fuente_requisitos": "Fullstack_AI_Test.pdf (Frontend requirements y Technical requirements > Frontend); docs/decisiones.md",
+  "restricciones_del_documento": [
+    "React (obligatorio).",
+    "El frontend NO recalcula la lógica de elegibilidad: confía en el backend.",
+    "Mostrar eligibility, score, reasons y warnings.",
+    "Distinguir bloqueantes (reasons) de advertencias (warnings).",
+    "Permitir aprobar (POST /api/orders/{id}/approve-expedited).",
+    "Reflejar cambios en tiempo real tras la aprobación.",
+    "Diferenciar claramente 'not eligible' de 'eligible but risky'."
+  ],
+  "decisiones": [
+    {
+      "id": "FD1",
+      "pregunta": "Stack base de React y lenguaje.",
+      "decidido": "Vite + TypeScript (Nico, 2026-10-27)."
+    },
+    {
+      "id": "FD2",
+      "pregunta": "Librería de estilos/componentes.",
+      "decidido": "MUI (Nico, 2026-10-27)."
+    },
+    {
+      "id": "FD3",
+      "pregunta": "Manejo de datos del servidor.",
+      "decidido": "TanStack Query (Nico, 2026-10-27)."
+    },
+    {
+      "id": "FD4",
+      "pregunta": "Testing.",
+      "decidido": "Jest + Testing Library (componentes) y Playwright (e2e) (Nico, 2026-10-27)."
+    },
+    {
+      "id": "FD5",
+      "pregunta": "Endpoints que consume el front además de approve-expedited (listado y detalle con evaluación). Rutas exactas pendientes en BE-10.",
+      "bloquea": [
+        "F03",
+        "F04",
+        "F06"
+      ]
+    },
+    {
+      "id": "FD6",
+      "pregunta": "Definición de 'eligible but risky' y si el backend la devuelve como campo (R6 del backend).",
+      "decidido": "Eligible but risky = eligible con score entre 60 y 70 inclusive (Nico, 2026-10-27). Pendiente: si el backend lo devuelve como campo o el front lo deriva del score."
+    },
+    {
+      "id": "FD7",
+      "pregunta": "'Real-time' tras aprobar: refetch tras la respuesta, polling o push (SSE/WebSocket).",
+      "bloquea": [
+        "F10"
+      ]
+    },
+    {
+      "id": "FD8",
+      "pregunta": "Formato y códigos HTTP del error estructurado (ya aprobada, no elegible, no encontrada, conflicto). Pendiente en BE-11.",
+      "bloquea": [
+        "F09"
+      ]
+    },
+    {
+      "id": "FD9",
+      "pregunta": "Idioma de la UI y de los textos de reasons/warnings que llegan del backend.",
+      "decidido": "UI en inglés (Nico, 2026-10-27)."
+    },
+    {
+      "id": "FD10",
+      "pregunta": "Cómo se ejecuta todo junto (proxy de Vite o CORS en Go, URL del backend por variable de entorno, docker-compose). Ver BE-12.",
+      "bloquea": [
+        "F02"
+      ]
+    },
+    {
+      "id": "FD11",
+      "pregunta": "Órdenes vencidas (validUntil pasado).",
+      "decidido": "Las oculta el front comparando validUntil con la hora actual; el backend no filtra. Por ahora sin lógica extra para el detalle abierto (Nico, 2026-10-27)."
+    }
+  ],
+  "features": [
+    {
+      "id": "F01",
+      "titulo": "Scaffold del proyecto React",
+      "descripcion": "Proyecto en frontend/ con Vite + TypeScript, MUI, TanStack Query, Jest + Testing Library y Playwright. Scripts de dev/build/test/e2e.",
+      "depende_de": [],
+      "bloqueado_por": [],
+      "estado": "listo para revisión"
+    },
+    {
+      "id": "F02",
+      "titulo": "Configuración de conexión con el backend",
+      "descripcion": "URL base del backend configurable y conexión en desarrollo (proxy o CORS).",
+      "depende_de": [
+        "F01"
+      ],
+      "bloqueado_por": [
+        "FD10"
+      ],
+      "estado": "pendiente"
+    },
+    {
+      "id": "F03",
+      "titulo": "Cliente de API y tipos/contratos",
+      "descripcion": "Capa única de acceso a la API: tipos de Order (campos del documento) y de Evaluation {eligible, score, reasons, warnings}; funciones para obtener órdenes/evaluación y para approve-expedited. Sin lógica de elegibilidad. Incluir validUntil (dateTime): lo calcula el backend y viene solo en la response, nunca en el request (D12).",
+      "depende_de": [
+        "F02"
+      ],
+      "bloqueado_por": [
+        "FD5"
+      ],
+      "estado": "pendiente"
+    },
+    {
+      "id": "F04",
+      "titulo": "Listado de órdenes",
+      "descripcion": "Vista para que el agente de operaciones vea las órdenes a revisar (orderId, cliente, tier, total, status y estado de elegibilidad que devuelve el backend).",
+      "depende_de": [
+        "F03"
+      ],
+      "bloqueado_por": [
+        "FD5"
+      ],
+      "estado": "pendiente"
+    },
+    {
+      "id": "F05",
+      "titulo": "Componentes de presentación de la evaluación",
+      "descripcion": "Componentes para score, badge de elegibilidad, lista de reasons y lista de warnings, tal como llegan del backend.",
+      "depende_de": [
+        "F01"
+      ],
+      "bloqueado_por": [],
+      "estado": "pendiente"
+    },
+    {
+      "id": "F06",
+      "titulo": "Vista de detalle de una orden",
+      "descripcion": "Mostrar los datos de la orden y su evaluación (eligible, score, reasons, warnings). Manejar campos faltantes/null sin romper la UI (solo mostrar, no interpretar). Mostrar validUntil tal como llega del backend.",
+      "depende_de": [
+        "F03",
+        "F05"
+      ],
+      "bloqueado_por": [
+        "FD5"
+      ],
+      "estado": "pendiente"
+    },
+    {
+      "id": "F07",
+      "titulo": "Distinción visual bloqueantes vs advertencias",
+      "descripcion": "Resaltar reasons como bloqueantes y warnings como advertencias, con estilos y jerarquía distintos.",
+      "depende_de": [
+        "F05"
+      ],
+      "bloqueado_por": [],
+      "estado": "pendiente"
+    },
+    {
+      "id": "F08",
+      "titulo": "Estados 'not eligible' vs 'eligible but risky' vs 'eligible'",
+      "descripcion": "Representación claramente diferenciada de cada estado, usando lo que indique el backend (el front no recalcula).",
+      "depende_de": [
+        "F05"
+      ],
+      "bloqueado_por": [],
+      "estado": "pendiente"
+    },
+    {
+      "id": "F09",
+      "titulo": "Acción de aprobación expedita",
+      "descripcion": "Botón que llama a POST /api/orders/{id}/approve-expedited. Estado de carga, evitar doble envío desde la UI, mostrar éxito o el error estructurado con sus reasons.",
+      "depende_de": [
+        "F06"
+      ],
+      "bloqueado_por": [
+        "FD8"
+      ],
+      "estado": "pendiente"
+    },
+    {
+      "id": "F10",
+      "titulo": "Reflejar cambios en tiempo real tras aprobar",
+      "descripcion": "Actualizar detalle y listado con el nuevo status y la nueva evaluación después de aprobar.",
+      "depende_de": [
+        "F04",
+        "F09"
+      ],
+      "bloqueado_por": [
+        "FD7"
+      ],
+      "estado": "pendiente"
+    },
+    {
+      "id": "F14",
+      "titulo": "Ocultar órdenes vencidas",
+      "descripcion": "Cuando una orden pasa su validUntil, el agente no debe revisarla: el frontend deja de mostrarla (D12, FD11). La re-evaluación de vencidas (stream + job) queda fuera de alcance.",
+      "depende_de": [
+        "F04",
+        "F06"
+      ],
+      "bloqueado_por": [],
+      "estado": "pendiente"
+    },
+    {
+      "id": "F11",
+      "titulo": "Estados de carga, vacío y error generales",
+      "descripcion": "Loading, lista vacía, backend caído/errores de red y orden inexistente.",
+      "depende_de": [
+        "F04",
+        "F06"
+      ],
+      "bloqueado_por": [],
+      "estado": "pendiente"
+    },
+    {
+      "id": "F12",
+      "titulo": "Tests del frontend",
+      "descripcion": "Jest + Testing Library (API mockeada) y e2e con Playwright: visualización de evaluación, diferenciación de estados, ocultado de vencidas y flujo de aprobación (éxito y errores).",
+      "depende_de": [
+        "F07",
+        "F08",
+        "F09",
+        "F10",
+        "F14"
+      ],
+      "bloqueado_por": [],
+      "estado": "pendiente"
+    },
+    {
+      "id": "F13",
+      "titulo": "Documentación del frontend",
+      "descripcion": "README de frontend/: cómo correrlo, variables de entorno, supuestos sobre la API y decisiones tomadas (referenciar docs/decisiones.md).",
+      "depende_de": [
+        "F12"
+      ],
+      "bloqueado_por": [],
+      "estado": "pendiente"
+    }
+  ]
+}
