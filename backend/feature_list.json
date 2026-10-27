@@ -57,13 +57,14 @@
     {
       "id": "BE-04",
       "title": "Hard rules",
-      "description": "Una regla por cada condición: inventoryStatus.available = false; inventoryStatus.lastCheckedAt anterior a 10 minutos; customer.tier null; items vacío.",
+      "description": "Una regla por cada condición: inventoryStatus.available = false; inventoryStatus.lastCheckedAt anterior a 10 minutos; customer.tier null; items vacío; createdAt vacío (D15).",
       "depends_on": [
         "BE-03"
       ],
       "decisions": [
         "D1",
-        "D11"
+        "D11",
+        "D15"
       ],
       "pending_decisions": [
         "lastCheckedAt null",
@@ -88,7 +89,8 @@
         "BLOQUEANTE para la regla de -20: montos límite por tier (STANDARD, GOLD, PLATINUM)",
         "addressValidated null",
         "Cantidad de un item null, 0 o negativa",
-        "HIGH_VALUE repetido o en minúsculas"
+        "HIGH_VALUE repetido o en minúsculas",
+        "Regla de -10 por antigüedad cuando createdAt viene vacío (ya la rechaza la hard rule de D15)"
       ],
       "status": "pending"
     },

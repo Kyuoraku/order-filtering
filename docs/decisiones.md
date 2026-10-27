@@ -21,6 +21,7 @@ Documento de requisitos de referencia: `Fullstack_AI_Test.pdf`.
 | D12 | `validUntil` | 2026-10-27 |
 | D13 | "Eligible but risky" | 2026-10-27 |
 | D14 | Idioma de la UI | 2026-10-27 |
+| D15 | `createdAt` vacío se rechaza | 2026-10-27 |
 
 ---
 
@@ -125,3 +126,9 @@ Requisito: soportar requests concurrentes (simplificado).
 ## D14. Idioma de la UI
 
 - La UI va en **inglés**.
+
+## D15. `createdAt` vacío se rechaza
+
+- Si `createdAt` viene vacío, la orden **se rechaza**.
+- Se implementa como una **rule nueva** e independiente (D1). Al ser una regla de rechazo, es una hard rule:
+  la orden queda no elegible y se agrega un texto explicativo a `reasons`.
