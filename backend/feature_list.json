@@ -1,0 +1,233 @@
+{
+  "project": "orders-api backend",
+  "language": "Go",
+  "source": [
+    "Fullstack_AI_Test.pdf",
+    "docs/decisiones.md"
+  ],
+  "note": "Tareas en orden de desarrollo. 'decisions' referencia docs/decisiones.md. 'pending_decisions' son definiciones abiertas: se consultan con Nico solo cuando bloquean la tarea.",
+  "features": [
+    {
+      "id": "BE-01",
+      "title": "Inicializar el módulo Go y separar en capas",
+      "description": "Crear el módulo y separar en paquetes la definición de reglas, la lógica de evaluación, la capa API y el almacenamiento en memoria (requisito del PDF).",
+      "depends_on": [],
+      "decisions": [
+        "D7"
+      ],
+      "pending_decisions": [
+        "Nombre del módulo",
+        "Router: net/http estándar o una librería"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "BE-02",
+      "title": "Modelo de dominio de la orden y del resultado",
+      "description": "Order con orderId, customer (name, tier), items, totalAmount, shipping (country, addressValidated), riskFlags, inventoryStatus (available, lastCheckedAt), status y createdAt. Resultado con eligible, score, reasons, warnings y validUntil (solo en la response).",
+      "depends_on": [
+        "BE-01"
+      ],
+      "decisions": [
+        "D12"
+      ],
+      "pending_decisions": [
+        "Campos de un item (quantity, price, sku...)",
+        "Formato y zona horaria de los timestamps"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "BE-03",
+      "title": "Contrato de Rule y registro de reglas",
+      "description": "Definir una interfaz común para que cada regla sea independiente y se pueda iterar sobre una orden. Agregar una regla nueva no debe requerir modificar las existentes. Las hard rules escriben en reasons y las de score en warnings.",
+      "depends_on": [
+        "BE-02"
+      ],
+      "decisions": [
+        "D1"
+      ],
+      "pending_decisions": [
+        "Mecanismo de registro (lista explícita, auto-registro, otro)",
+        "¿Se evalúan todas las reglas o se corta en la primera hard rule?",
+        "Formato de reasons/warnings (texto, código + mensaje, idioma)"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "BE-04",
+      "title": "Hard rules",
+      "description": "Una regla por cada condición: inventoryStatus.available = false; inventoryStatus.lastCheckedAt anterior a 10 minutos; customer.tier null; items vacío; createdAt vacío (D15).",
+      "depends_on": [
+        "BE-03"
+      ],
+      "decisions": [
+        "D1",
+        "D11",
+        "D15"
+      ],
+      "pending_decisions": [
+        "lastCheckedAt null",
+        "inventoryStatus o customer null completos",
+        "items null vs vacío",
+        "Límite exacto de 10 minutos"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "BE-05",
+      "title": "Reglas de score",
+      "description": "Una regla por cada descuento: -30 si la cantidad total > 3; -20 si totalAmount supera el umbral del tier; -15 si addressValidated = false; -25 si riskFlags contiene HIGH_VALUE; -10 si createdAt es anterior a 48 horas.",
+      "depends_on": [
+        "BE-03"
+      ],
+      "decisions": [
+        "D1",
+        "D4"
+      ],
+      "pending_decisions": [
+        "BLOQUEANTE para la regla de -20: montos límite por tier (STANDARD, GOLD, PLATINUM)",
+        "addressValidated null",
+        "Cantidad de un item null, 0 o negativa",
+        "HIGH_VALUE repetido o en minúsculas",
+        "Regla de -10 por antigüedad cuando createdAt viene vacío (ya la rechaza la hard rule de D15)"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "BE-06",
+      "title": "Motor de evaluación",
+      "description": "Arrancar con score 100, aplicar todas las reglas registradas y calcular eligible = ninguna hard rule falló y score >= 60. Si score < 60, agregar el reason 'rechazado por bajo score', aunque también haya fallado una hard rule.",
+      "depends_on": [
+        "BE-04",
+        "BE-05"
+      ],
+      "decisions": [
+        "D1",
+        "D10"
+      ],
+      "pending_decisions": [
+        "¿Limitar el score a 0-100?",
+        "¿Se calcula el score cuando falla una hard rule?"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "BE-07",
+      "title": "Cálculo de validUntil",
+      "description": "Calcular a partir de las reglas la fecha y hora estimadas hasta las que la orden sigue siendo válida y devolverlas en la response.",
+      "depends_on": [
+        "BE-06"
+      ],
+      "decisions": [
+        "D12"
+      ],
+      "pending_decisions": [
+        "¿Vence cuando cambia el resultado o solo cuando deja de ser elegible?",
+        "validUntil de una orden ya no elegible",
+        "¿Cada regla informa su propio vencimiento?"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "BE-08",
+      "title": "Store en memoria con lock por orden",
+      "description": "Repositorio en memoria con datos de ejemplo. Lock por orderId, de modo que dos requests sobre la misma orden se serialicen y las órdenes distintas corran en paralelo. Escrituras atómicas.",
+      "depends_on": [
+        "BE-02"
+      ],
+      "decisions": [
+        "D6",
+        "D11"
+      ],
+      "pending_decisions": [
+        "Por qué canal entran las órdenes (endpoint de ingesta o datos precargados)"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "BE-09",
+      "title": "Idempotencia y detección de cambios",
+      "description": "Comparar solo los atributos que evalúan las reglas. Si la orden ya fue procesada y esos atributos no cambiaron, devolver lo almacenado; si cambiaron o la orden es nueva, re-evaluar. Rechazar órdenes con orderId null.",
+      "depends_on": [
+        "BE-06",
+        "BE-08"
+      ],
+      "decisions": [
+        "D2",
+        "D3",
+        "D5",
+        "D8",
+        "D9"
+      ],
+      "pending_decisions": [
+        "Qué se almacena: evaluación, aprobación o ambas",
+        "Cómo se rechaza un orderId null (HTTP 400, status REJECTED, reason)",
+        "Orden aprobada que llega cambiada y ya no es elegible"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "BE-10",
+      "title": "Endpoints de lectura",
+      "description": "Listar órdenes y obtener el detalle de una orden con su evaluación, para que el frontend no recalcule nada. El listado devuelve también las vencidas; las oculta el frontend.",
+      "depends_on": [
+        "BE-09"
+      ],
+      "decisions": [
+        "D12"
+      ],
+      "pending_decisions": [
+        "Propuesta del hilo frontend, a confirmar con Nico: GET /api/orders y GET /api/orders/{id} devuelven la orden con un campo `evaluation` {eligible, score, reasons, warnings, validUntil}; el POST de aprobación devuelve la orden actualizada o un error {code, message, reasons}.",
+        "Rutas exactas"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "BE-11",
+      "title": "POST /api/orders/{id}/approve-expedited",
+      "description": "Tomar el lock de la orden, re-evaluar según D5, aprobar si es elegible y devolver éxito o un error estructurado con reasons. Debe manejar órdenes ya aprobadas, órdenes que dejaron de ser elegibles y requests concurrentes, y ser idempotente.",
+      "depends_on": [
+        "BE-09"
+      ],
+      "decisions": [
+        "D3",
+        "D5",
+        "D6"
+      ],
+      "pending_decisions": [
+        "Propuesta del hilo frontend, a confirmar con Nico: GET /api/orders y GET /api/orders/{id} devuelven la orden con un campo `evaluation` {eligible, score, reasons, warnings, validUntil}; el POST de aprobación devuelve la orden actualizada o un error {code, message, reasons}.",
+        "Respuesta ante una orden ya aprobada (éxito o error)",
+        "Códigos HTTP de los errores",
+        "Aprobar una orden con validUntil vencido",
+        "Transición de status al aprobar"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "BE-12",
+      "title": "CORS y configuración para el frontend",
+      "description": "Permitir que el frontend local consuma la API.",
+      "depends_on": [
+        "BE-10",
+        "BE-11"
+      ],
+      "decisions": [],
+      "pending_decisions": [
+        "Puerto y orígenes permitidos"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "BE-13",
+      "title": "Tests",
+      "description": "Tests unitarios por regla, del motor (incluido el score bajo), de la detección de cambios, de concurrencia (dos aprobaciones simultáneas de la misma orden) y de la API.",
+      "depends_on": [
+        "BE-11"
+      ],
+      "decisions": [],
+      "pending_decisions": [],
+      "status": "pending"
+    }
+  ]
+}

@@ -19,6 +19,9 @@ Documento de requisitos de referencia: `Fullstack_AI_Test.pdf`.
 | D10 | Reason por score bajo | 2026-10-27 |
 | D11 | El servicio no chequea stock | 2026-10-27 |
 | D12 | `validUntil` | 2026-10-27 |
+| D13 | "Eligible but risky" | 2026-10-27 |
+| D14 | Idioma de la UI | 2026-10-27 |
+| D15 | `createdAt` vacío se rechaza | 2026-10-27 |
 
 ---
 
@@ -113,3 +116,19 @@ Requisito: soportar requests concurrentes (simplificado).
   - el frontend deja de mostrarla, porque no se debe evaluar.
 - **Quién oculta las vencidas:** el **frontend**. El backend no agrega esa lógica por ahora.
 - **Fuera de alcance por ahora:** enviar las órdenes vencidas a un stream y programar un job que las vuelva a enviar al servicio.
+
+## D13. "Eligible but risky"
+
+- Una orden es **"eligible but risky"** cuando es elegible y su score está **entre 60 y 70 inclusive**.
+- Cómo lo recibe el frontend (campo propio en la response o derivado) está pendiente de definir;
+  el frontend no debe recalcular elegibilidad (requisito del PDF).
+
+## D14. Idioma de la UI
+
+- La UI va en **inglés**.
+
+## D15. `createdAt` vacío se rechaza
+
+- Si `createdAt` viene vacío, la orden **se rechaza**.
+- Se implementa como una **rule nueva** e independiente (D1). Al ser una regla de rechazo, es una hard rule:
+  la orden queda no elegible y se agrega un texto explicativo a `reasons`.
